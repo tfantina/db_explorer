@@ -5,56 +5,69 @@
 
   import { appDataDir, join } from '@tauri-apps/api/path'
 
-  let connections = $state('')
+  let name: string = $state(''),
+    host: string = $state(''),
+    port: number = $state(0),
+    username: string = $state(''),
+    database: string = $state('')
+
+  let db: Database | null = null
 
   async function createConnection() {
     const dataDir = await appDataDir()
     console.log('Database should be in:', dataDir)
 
-    const dbPath = await join(dataDir, 'com.dbexplorer.db')
+    const dbPath = await join(dataDir, 'dbexplorer.db')
     console.log('EXPECTED PATH:', dbPath)
 
-    const db = await Database.load('sqlite:dbexplorer')
-    console.log(db)
-
-    const res = await db.execute('SELECT * from sys.tables')
-
-    console.log(res, 'RES')
+    db = await Database.load('sqlite:dbexplorer.db')
+    const res = await db.execute('select * from connections')
   }
 
   createConnection()
 
-  // async function createConnection(evt) {
-  //   evt.preventDefault()
-
-  //   const formData = new FormData(evt.target)
-  //   const data = {}
-
-  //   for (let [key, value] of formData.entries()) {
-  //     data[key] = value
-  //   }
-
-  //   console.log(data, 'MEH!')
-  //   putConnection(data)
-  // }
-
-  // async function executeQuery() {
-  //   const result = await window.api.execute\_query('SELECT * FROM connections')
-  //   console.log(result())
-  // }
+  const createDatabase = async () => {
+    db.execute(evt)
+  }
 </script>
 
 <main class="container">
   <h1>Welcome to Tauri ++ Svelte</h1>
 
   <form class="row">
-    <input id="name" name="name" placeholder="Enter a name..." />
-    <input id="host" name="host" placeholder="Enter a host..." />
-    <input id="port" name="port" placeholder="Enter a port..." />
-    <input id="login" name="login" placeholder="Enter a username.." />
-    <input type="checkbox" id="remember" name="remember" />
-    <input type="database" name="database" />
-    <button type="submit">Greet</button>
+    <input
+      id="name"
+      name="name"
+      bind:value={name}
+      placeholder="Enter a name..."
+    />
+    <input
+      id="host"
+      name="host"
+      bind:value={host}
+      placeholder="Enter a host..."
+    />
+    <input
+      id="port"
+      name="port"
+      bind:value={port}
+      placeholder="Enter a port..."
+    />
+    <input
+      id="username"
+      name="username"
+      bind:value={username}
+      placeholder="Enter a username.."
+    />
+    <input
+      type="checkbox"
+      id="remember"
+      bund:value={remember}
+      name="remember"
+    />
+    <input type="database" bind:value={database} name="database" />
+    <button type="submit" on:click|preventDefault={createDatabase}>Greet</button
+    >
   </form>
 </main>
 
