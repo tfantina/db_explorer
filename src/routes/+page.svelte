@@ -1,6 +1,11 @@
 <script lang="ts">
   import type { PageProps } from './$types'
-  import { getConnections, putConnection } from '../connections/db_connector'
+  import {
+    getConnections,
+    putConnection
+  } from '../connections/internalConnector'
+  import type { Connection } from '../connections/internalConnector'
+  import { postgresQuery } from '../connections/externalConnector'
   import Database from '@tauri-apps/plugin-sql'
   import '../styles/style.css'
 
@@ -31,6 +36,18 @@
 
   async function refresh() {
     localData = getConnections()
+
+    const test: Connection = {
+      name: 'localhost',
+      host: 'localhost',
+      port: 5432,
+      login: 'postgres',
+      remember: false,
+      database: 'postbox_dev'
+    }
+
+    const rest = await postgresQuery(test)
+    console.log(rest)
   }
 </script>
 
@@ -45,6 +62,9 @@
   </div>
   <div class="col">
     <form class="row d-flex f-column">
+      <div class="input-group">
+        <button onclick={refresh}>Refresh</button>
+      </div>
       <div class="input-group">
         <input
           id="name"
