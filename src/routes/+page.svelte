@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PageProps } from './$types'
+  import { invoke } from '@tauri-apps/api/core'
   import {
     getConnections,
     putConnection
@@ -9,34 +10,45 @@
   import Database from '@tauri-apps/plugin-sql'
   import '../styles/style.css'
 
+  enum Engines {
+    Mysql = 'Mysql',
+    Postgres = 'Postgres',
+    Sqlite = 'Sqlite'
+  }
+  interface QueryResponse {
+    columns: string[]
+    rows: string[][]
+  }
+
   let name: string = $state(''),
     host: string = $state(''),
     port: number = $state(0),
     username: string = $state(''),
     database: string = $state(''),
-    remember: boolean = $state(false)
+    remember: boolean = $state(false),
+    querystr: string = $state(''),
+    engine: Engines = $state(Engines.Mysql),
 
   let { data }: PageProps = $props()
   let localData = { ...data }
 
+
+
   async function createConnection() {
-    debugger
     const data = {
       name: name,
       host: host,
       port: port,
       login: username,
       remember: remember,
-      database: database
+      database: database,
+      kind: engine
     }
 
-    const localData = await putConnection(data)
-    debugger
+    localData = await putConnection(data)
   }
 
   async function refresh() {
-    localData = getConnections()
-
     const test: Connection = {
       name: 'localhost',
       host: 'localhost',
@@ -46,12 +58,29 @@
       database: 'postbox_dev'
     }
 
-    const rest = await postgresQuery(test)
+    const rest = await invoke('initialize_pool', {
+      dbPath: `postgres://${test.login}@${test.host}:${test.port}/${test.database}`
+    })
+
     console.log(rest)
+  }
+
+  async function query() {
+    const res = await invoke<QueryResponse>('execute_query', {
+      request: {
+        query: querystr
+      }
+    })
+
+    console.log(res)
   }
 </script>
 
 <main class="container">
+  <div class="section">
+    <input type="textarea" bind:value={querystr} />
+    <button onclick={query}>Execute</button>
+  </div>
   <div class="col">
     <ul>
       hi
@@ -64,6 +93,16 @@
     <form class="row d-flex f-column">
       <div class="input-group">
         <button onclick={refresh}>Refresh</button>
+      </div>
+      <div class="input-group">
+        <button onclick={query}>Query</button>
+      </div>
+      <dib class="input-group">
+          <input type="select">
+          <option>MySQL</option>
+          <option>Postgres</option>
+          <option>SQLite</option>
+          </input>
       </div>
       <div class="input-group">
         <input
