@@ -2,8 +2,9 @@
 // use sqlx::mysql::MySqlPoolOptions
 // use sqlx::sqlite::SqlitePoolOptions
 use serde::{Deserialize, Serialize};
-use sqlx::{postgres::PgPool, Row};
+use sqlx::{postgres::PgPool, Column, Row};
 use std::sync::Mutex;
+
 use tauri::State;
 
 pub struct PoolWrapper(pub Mutex<Option<PgPool>>);
@@ -21,7 +22,10 @@ pub struct QueryResponse {
 }
 
 #[tauri::command]
-pub async fn initialize_pool(db_path: &str, state: State<'_, PoolWrapper>) -> Result<String, String> {
+pub async fn initialize_pool(
+    db_path: &str,
+    state: State<'_, PoolWrapper>,
+) -> Result<String, String> {
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(20)
         .connect(db_path)
@@ -41,7 +45,6 @@ pub fn connect_to_pool(state: State<'_, PoolWrapper>) -> Result<Vec<String>, Str
         .as_ref()
         .ok_or("Database pool not initialized")?;
 
-
     Ok(vec!["Connected successfully".to_string()])
 }
 
@@ -50,14 +53,19 @@ pub async fn execute_query(
     state: State<'_, PoolWrapper>,
     request: QueryRequest,
 ) -> Result<QueryResponse, String> {
-    let pool_wrapper = state.0.lock().unwrap();
-    let pool = pool_wrapper
-        .as_ref()
-        .ok_or("Database pool not initialized")?;
+    let pool = {
+        let pool_wrapper = state.0.lock().unwrap();
+        pool_wrapper
+            .as_ref()
+            .ok_or("Database pool not initialized")?
+            .clone()
+    };
 
-    let resp: Vec<T> = sqlx::query(&request.query).fetch_all(&pool).await.map_err(|e| e.to_string())?;
+    let query = sqlx::query(&request.query);
+    let result = query.fetch_all(&pool).await;
+    let resp = result.map_err(|e| e.to_string())?;
 
-    let mut columns: Vec<T> = Vec::new();
+    let mut columns = Vec::new();
     let mut rows = Vec::new();
 
     if let Some(first_row) = resp.get(0) {
@@ -80,6 +88,6 @@ pub async fn execute_query(
 
     Ok(QueryResponse {
         columns,
-        rows: rows
+        rows: rows,
     })
 }
